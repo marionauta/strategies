@@ -13,6 +13,8 @@
 //! [1]: https://en.wikipedia.org/wiki/Divide_and_conquer_algorithms
 //! [2]: trait.DacProblem.html
 
+use std::collections::HashMap;
+use std::hash::Hash;
 use std::marker::PhantomData;
 
 /// Divide & Conquer Problem.
@@ -28,9 +30,11 @@ use std::marker::PhantomData;
 /// factorial), but if we are working with a list or an array, `E` could simply
 /// be a pointer to an element and `S` the actual element.
 ///
-/// Once you have defined the problem, use [`DacAlgorithm`][1] to solve it.
+/// Once you have defined the problem, use [`DacAlgorithm`][1] or
+/// [`DacMemAlgorithm`][2] to solve it.
 ///
 /// [1]: struct.DacAlgorithm.html
+/// [2]: struct.DacMemAlgorithm.html
 pub trait DacProblem<S, E> {
     /// The size of your problem. Usually referred to as `n`.
     ///
@@ -103,5 +107,95 @@ impl<S, E, P: DacProblem<S, E>> DacAlgorithm<S, E, P> {
     /// Get the final solution.
     pub fn get_solution(&self) -> Option<S> {
         self.problem.get_solution(&self.partial_solution)
+    }
+}
+
+/// The problem solver, with memory.
+///
+/// # Explanation
+///
+/// Solves a divide & conquer problem with memory: it stores the partial
+/// solutions of all the subproblems, in case they are needed by another
+/// subproblem. An usual example is the [Fibonacci sequence][1]:
+///
+///     fn fib(n: u64) -> u64 {
+///         match n {
+///             0 => 0,
+///             1 => 1,
+///             n => fib(n - 1) + fib(n - 2),
+///         }
+///     }
+///
+/// As you can see, `fib(5)` needs `fib(4)` and `fib(3)`. But then `fib(4)` also
+/// needs `fib(3)`. Memory here is useful so we don't recalculate values.
+///
+/// # Usage
+///
+/// Using this is the same as using [`DacAlgorithm`][2] but you problem has to
+/// implement some traits:
+///
+/// - `DacProblem` has to implement the following traits:
+///     - `Eq` (and therefore `PartialEq`)
+///     - `Hash`
+///     - `Clone`
+/// - `E` has to be `Clone` too.
+///
+/// Which is not complicated to do:
+///
+///     #[derive(Eq, PartialEq, Hash, Clone)]
+///     struct Fibonacci(u64);
+///
+/// [1]: https://en.wikipedia.org/wiki/Fibonacci_number
+/// [2]: struct.DacAlgorithm.html#usage
+pub struct DacMemAlgorithm<P, S, E>
+    where P: DacProblem<S, E> + Eq + Hash + Clone,
+          E: Clone
+{
+    phan: PhantomData<S>,
+    solutions: HashMap<P, E>,
+    problem: P,
+}
+
+impl<P, S, E> DacMemAlgorithm<P, S, E>
+    where P: DacProblem<S, E> + Eq + Hash + Clone,
+          E: Clone
+{
+    pub fn new(problem: P) -> Self {
+        let mut map = HashMap::new();
+        Self::solve(&problem, &mut map);
+
+        DacMemAlgorithm {
+            phan: PhantomData,
+            solutions: map,
+            problem: problem,
+        }
+    }
+
+    fn solve(problem: &P, mut solutions: &mut HashMap<P, E>) -> E {
+        if problem.is_base_case() {
+            problem.base_case_solution()
+
+        } else if solutions.contains_key(&problem) {
+            solutions.get(&problem).unwrap().clone()
+
+        } else {
+            let solution = {
+                let solutions = (0..problem.subproblem_count())
+                                    .map(|i| problem.get_subproblem(i))
+                                    .map(|p| Self::solve(&p, &mut solutions))
+                                    .collect::<Vec<E>>();
+
+                problem.combine(solutions)
+            };
+
+            solutions.insert(problem.clone(), solution);
+            solutions.get(&problem).unwrap().clone()
+        }
+    }
+
+    pub fn get_solution(&self) -> Option<S> {
+        self.solutions
+            .get(&self.problem)
+            .and_then(|e| self.problem.get_solution(e))
     }
 }

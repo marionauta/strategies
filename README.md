@@ -7,8 +7,8 @@ have to. You'll only need to define your problem.
 
 ### Implemented strategies:
 
-- [x] Divide & Conquer (without memory)
-- [ ] Divide & Conquer (with memory)
+- [x] Divide & Conquer
+- [x] Divide & Conquer (with memory)
 - [ ] more...
 
 This is in early stages. Expect things to change.
