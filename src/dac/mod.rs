@@ -72,13 +72,17 @@ pub trait DacProblem<S, E> {
 ///
 /// Solves a divide & conquer problem without memory. Useful if we don't need
 /// to store partial solutions.
-pub struct DacAlgorithm<S, E, P: DacProblem<S, E>> {
+pub struct DacAlgorithm<P, S, E>
+    where P: DacProblem<S, E>
+{
     phan: PhantomData<S>,
     partial_solution: E,
     problem: P,
 }
 
-impl<S, E, P: DacProblem<S, E>> DacAlgorithm<S, E, P> {
+impl<P, S, E> DacAlgorithm<P, S, E>
+    where P: DacProblem<S, E>
+{
     /// Solve the `problem` problem.
     pub fn new(problem: P) -> Self {
         let e = Self::solve(&problem);
