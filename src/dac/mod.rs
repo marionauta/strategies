@@ -122,13 +122,11 @@ impl<P, S, E> DacAlgorithm<P, S, E>
 /// solutions of all the subproblems, in case they are needed by another
 /// subproblem. An usual example is the [Fibonacci sequence][1]:
 ///
-///     fn fib(n: u64) -> u64 {
-///         match n {
-///             0 => 0,
-///             1 => 1,
-///             n => fib(n - 1) + fib(n - 2),
-///         }
-///     }
+/// ``` text
+/// fib(0) = 0
+/// fib(1) = 1
+/// fib(n) = fib(n - 1) + fib(n - 2)
+/// ```
 ///
 /// As you can see, `fib(5)` needs `fib(4)` and `fib(3)`. But then `fib(4)` also
 /// needs `fib(3)`. Memory here is useful so we don't recalculate values.
