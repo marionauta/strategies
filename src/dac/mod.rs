@@ -33,8 +33,80 @@ use std::marker::PhantomData;
 /// Once you have defined the problem, use [`DacAlgorithm`][1] or
 /// [`DacMemAlgorithm`][2] to solve it.
 ///
+/// # Examples
+///
+/// In [Required Methods][3] you'll find the description to all the methods you
+/// need to implement. Here is an example solving the [Fibonacci][4] problem:
+///
+///     use strategies::dac::DacProblem;
+///     use strategies::dac::{DacAlgorithm, DacMemAlgorithm};
+///
+///     // This is where we store our problem.
+///     // (The derive part is only needed for DacMemAlgorithm).
+///     #[derive(Clone, Eq, PartialEq, Hash)]
+///     struct Fibonacci(u64);
+///
+///     // Since the problem is simple, `E` and `S` are the same type.
+///     impl DacProblem<u64, u64> for Fibonacci {
+///         fn size(&self) -> usize {
+///             self.0 as usize
+///         }
+///
+///         // We know directly that if the problem is 0 or 1, the solution
+///         // is the same as the problem.
+///         fn is_base_case(&self) -> bool {
+///             self.size() < 2
+///         }
+///
+///         fn base_case_solution(&self) -> u64 {
+///             self.0
+///         }
+///
+///         // As the fibonacci definition has 2 recursive subproblems...
+///         fn subproblem_count(&self) -> usize {
+///             2
+///         }
+///
+///         fn get_subproblem(&self, i: usize) -> Fibonacci {
+///             match i {
+///                 0 => Fibonacci(self.0 - 1),
+///                 _ => Fibonacci(self.0 - 2),
+///             }
+///         }
+///
+///         // We add the to subproblems' solutions.
+///         fn combine(&self, solutions: Vec<u64>) -> u64 {
+///             let a = solutions.get(0).unwrap();
+///             let b = solutions.get(1).unwrap();
+///
+///             a + b
+///         }
+///
+///         fn get_solution(&self, partial_solution: &u64) -> Option<u64> {
+///             Some(*partial_solution)
+///         }
+///     }
+///
+///     // Now we can use DacAlgorithm...
+///     let p = DacAlgorithm::new(Fibonacci(5));
+///     let s = p.get_solution().unwrap();
+///     assert_eq!(s, 5);
+///
+///     // ...or DacMemAlgorithm, which is the best option for this problem
+///     // (go to DacMemAlgorithm's page to see why).
+///     let p = DacMemAlgorithm::new(Fibonacci(50));
+///     let s = p.get_solution().unwrap();
+///     assert_eq!(s, 12586269025);
+///
+/// **Note**: Although you will be doing any other kind of problems, you'll
+/// have to pick the best types for the problem. In the above's example I used
+/// `u64` because it's part of Rust, but it can't store the solution to
+/// Fibonacci(100).
+///
 /// [1]: struct.DacAlgorithm.html
 /// [2]: struct.DacMemAlgorithm.html
+/// [3]: #required-methods
+/// [4]: https://en.wikipedia.org/wiki/Fibonacci_number
 pub trait DacProblem<S, E> {
     /// The size of your problem. Usually referred to as `n`.
     ///
@@ -72,6 +144,13 @@ pub trait DacProblem<S, E> {
 ///
 /// Solves a divide & conquer problem without memory. Useful if we don't need
 /// to store partial solutions.
+///
+/// # Usage
+///
+/// First, implement a `DacProblem`. Then, solve it. A good example is in
+/// [`DacProblem`][1].
+///
+/// [1]: trait.DacProblem.html#examples
 pub struct DacAlgorithm<P, S, E>
     where P: DacProblem<S, E>
 {
