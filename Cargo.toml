@@ -2,3 +2,12 @@
 name = "strategies"
 version = "0.0.2"
 authors = ["Mario Nachbaur <mario.nachbaur@outlook.com>"]
+
+description = "A library that implements many algorithm-solving strategies."
+keywords = ["algorithm", "problem"]
+readme = "README.md"
+
+repository = "https://github.com/marionauta/strategies"
+license = "MIT"
+
+exclude = [".travis.yml", ".gitignore"]
