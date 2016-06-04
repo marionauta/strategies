@@ -12,6 +12,7 @@ use it for real world problems too.
 
 - [x] Divide & Conquer
 - [x] Divide & Conquer (with memory)
+- [x] Backtracking
 - [ ] more...
 
 This is in early stages. Expect things to change.
