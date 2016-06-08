@@ -14,13 +14,13 @@ pub mod dac;
 ///
 #[derive(PartialEq, Eq)]
 pub enum Type {
-    /// If you want to maximize a value (e.g. business' earnings).
+    /// If it isn't an optimization problem (i.e. we want all the valid
+    /// solutions we find) then use `All`.
     All,
 
-    /// If you want to minimize (e.g. travel time).
+    /// If you want to maximize a value (e.g. business' earnings).
     Max,
 
-    /// If it isn't an optimization problem (i.e. we want all the valid solutions
-    ///   we find) then use `All`.
+    /// If you want to minimize (e.g. travel time).
     Min,
 }
