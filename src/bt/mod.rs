@@ -1,4 +1,18 @@
 //! The Backtracking stategy.
+//!
+//! From [Wikipedia][1]:
+//!
+//! > Backtracking is a general algorithm for finding all (or some) solutions
+//! > to computational problems, notably _constraint satisfaction problems_,
+//! > that builds solution candidates, and abandons each partial candidate
+//! > - **backtracks** - as soon as it determines that it cannot be a valid
+//! > solution.
+//!
+//! To use this strategy you need to implement the [`bt::State`][2] trait and
+//! everything else is handled for you.
+//!
+//! [1]: https://en.wikipedia.org/wiki/Backtracking
+//! [2]: trait.State.html
 
 use std::f64;
 use std::hash::Hash;
@@ -7,6 +21,29 @@ use std::marker::PhantomData;
 
 use super::Type;
 
+/// Backtracking problem state.
+///
+/// In order to use this strategy you have to implement this trait. There are
+/// two generic types:
+///
+/// * `A`: Alternatives the algorithm uses to explore many posible solutions.
+/// * `S`: The final solution, the output of the algorithm.
+///
+/// In backtracking, this is called _state_ instead of _problem_ because it
+/// isn't a mere description, it **holds the values** while the algorithm is
+/// running. When a `State` is created, it has to hold the problem's
+/// **initial state**.
+///
+/// Maybe the two most important methods are `State::forward` and
+/// `State::backward` because they define **how the `State` changes** when the
+/// algorithm decides to take a certain alternative. Calling `forward` and
+/// then `backward` must lead to the exact same state as the one before calling
+/// them.
+///
+/// Once you have defined the **initial state**, use [`bt::Algorithm`][1] to
+/// solve it.
+///
+/// [1]: struct.Algorithm.html
 pub trait State<S, A> {
     /// Type of the problem.
     ///
@@ -20,6 +57,10 @@ pub trait State<S, A> {
     fn size(&self) -> usize;
 
     /// Final state - when going forward is imposible.
+    ///
+    /// The default implementation is valid for a reduced number of problems.
+    /// You may have other conditions to stop the algorithm: your budget has
+    /// been spent, you don't have room left...
     fn is_final(&self) -> bool {
         self.size() == 0
     }
@@ -27,10 +68,22 @@ pub trait State<S, A> {
     /// List of different ways the problem can go forward (and backwards after).
     fn alternatives(&self) -> Vec<A>;
 
+    /// Apply a change with the `a` alternative.
+    ///
+    /// The state must change its properties, according to what the `a`
+    /// alternative does.
     fn forward(&mut self, a: A);
+
+    /// Discard a change taken with the `a` alternative.
+    ///
+    /// It has to revert the state to the previos one, just before calling the
+    /// `State::forward` method.
     fn backward(&mut self, a: A);
 
     /// Current state's value.
+    ///
+    /// Only called when `State::is_final`, gives the algorithm information
+    /// about how good this final state is.
     fn value(&self) -> f64;
 
     /// An estimation of the best value the problem could reach if it chose the
