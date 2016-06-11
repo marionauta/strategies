@@ -100,6 +100,31 @@ pub trait State<S, A> {
     fn solution(self) -> Option<S>;
 }
 
+/// The problem solver.
+///
+/// Solves a backtracking state.
+///
+/// # Usage
+///
+/// First, implement a [`bt::State`][1]. Then `solve` it.
+///
+/// The _catch_ is that your problem,`State`, has to implement some traits:
+///
+/// * `Clone`
+/// * `Eq` (and `PartialEq`)
+/// * `Hash`
+/// * `Ord` (and `PartialOrd`)
+///
+/// ```
+/// #[derive(Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
+/// struct MyState;
+/// ```
+///
+/// And your alternative, `A`, has to be `Clone` too. But that's not much of a
+/// hassle as you'll probably use `bool` or numbers and all those already
+/// implement the trait.
+///
+/// [1]: trait.State.html
 pub struct Algorithm<P, S, A>
     where P: State<S, A>
 {
@@ -107,6 +132,8 @@ pub struct Algorithm<P, S, A>
     phans: PhantomData<S>,
     phana: PhantomData<A>,
 
+    // The only 'option' to change a bit the algorithm's behaviour.
+    // More could be added in the future.
     solution_count: usize,
 
     solutions: HashSet<P>,
@@ -183,6 +210,10 @@ impl<P, S, A> Algorithm<P, S, A>
         }
     }
 
+    /// Solve the problem.
+    ///
+    /// After creating the `Algorithm` with a `State`, solve the problem so you
+    /// can get all the solutions.
     pub fn solve(&mut self) {
         if self.state.is_final() {
             self.update_solutions();
