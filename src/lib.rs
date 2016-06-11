@@ -15,7 +15,7 @@ pub mod dac;
 #[derive(PartialEq, Eq)]
 pub enum Type {
     /// If it isn't an optimization problem (i.e. we want all the valid
-    /// solutions we find) then use `All`.
+    /// solutions we find).
     All,
 
     /// If you want to maximize a value (e.g. business' earnings).
