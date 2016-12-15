@@ -17,7 +17,6 @@
 use std::f64;
 use std::hash::Hash;
 use std::collections::HashSet;
-use std::marker::PhantomData;
 
 use super::Type;
 
@@ -44,7 +43,10 @@ use super::Type;
 /// solve it.
 ///
 /// [1]: struct.Algorithm.html
-pub trait State<S, A> {
+pub trait State {
+    type Solution;
+    type Alternative: Clone;
+
     /// Type of the problem.
     ///
     /// Supported values are `Max` and `Min` for optimization problems, and
@@ -66,19 +68,19 @@ pub trait State<S, A> {
     }
 
     /// List of different ways the problem can go forward (and backwards after).
-    fn alternatives(&self) -> Vec<A>;
+    fn alternatives(&self) -> Vec<Self::Alternative>;
 
     /// Apply a change with the `a` alternative.
     ///
     /// The state must change its properties, according to what the `a`
     /// alternative does.
-    fn forward(&mut self, a: A);
+    fn forward(&mut self, a: Self::Alternative);
 
     /// Discard a change taken with the `a` alternative.
     ///
     /// It has to revert the state to the previos one, just before calling the
     /// `State::forward` method.
-    fn backward(&mut self, a: A);
+    fn backward(&mut self, a: Self::Alternative);
 
     /// Current state's value.
     ///
@@ -88,7 +90,7 @@ pub trait State<S, A> {
 
     /// An estimation of the best value the problem could reach if it chose the
     /// specified alternative.
-    fn estimated_value(&self, _: A) -> f64 {
+    fn estimated_value(&self, _a: Self::Alternative) -> f64 {
         match self.problem_type() {
             Type::Max => f64::MAX,
             Type::Min => f64::MIN,
@@ -97,7 +99,7 @@ pub trait State<S, A> {
     }
 
     /// Solution to a final state.
-    fn solution(self) -> Option<S>;
+    fn solution(self) -> Option<Self::Solution>;
 }
 
 /// The problem solver.
@@ -125,33 +127,21 @@ pub trait State<S, A> {
 /// implement the trait.
 ///
 /// [1]: trait.State.html
-pub struct Algorithm<P, S, A>
-    where P: State<S, A>
-{
-    // This two are here so `S` and `A` are used.
-    phans: PhantomData<S>,
-    phana: PhantomData<A>,
-
+pub struct Algorithm<S: State> {
     // The only 'option' to change a bit the algorithm's behaviour.
     // More could be added in the future.
     solution_count: usize,
 
-    solutions: HashSet<P>,
+    solutions: HashSet<S>,
     best_value: f64,
     success: bool,
-    state: P,
+    state: S,
 }
 
-impl<P, S, A> Algorithm<P, S, A>
-    where P: State<S, A> + Clone + Eq + Hash + Ord,
-          A: Clone
-{
+impl<S> Algorithm<S> where S: State + Clone + Eq + Hash + Ord {
     /// Create a new algorithm to solve `state`.
-    pub fn new(state: P) -> Self {
+    pub fn new(state: S) -> Self {
         Algorithm {
-            phans: PhantomData,
-            phana: PhantomData,
-
             solution_count: 100,
 
             solutions: HashSet::new(),
@@ -180,7 +170,7 @@ impl<P, S, A> Algorithm<P, S, A>
     }
 
     /// All the solutions calculated with the algorithm.
-    pub fn all_solutions(&self) -> HashSet<P> {
+    pub fn all_solutions(&self) -> HashSet<S> {
         self.solutions.clone()
     }
 
@@ -202,7 +192,7 @@ impl<P, S, A> Algorithm<P, S, A>
     /// Decide if alternative `a` is not worthy of being explored.
     ///
     /// Here we need a well written `State::estimated_value`.
-    fn is_to_prune(&self, a: A) -> bool {
+    fn is_to_prune(&self, a: S::Alternative) -> bool {
         match self.state.problem_type() {
             Type::Max => self.state.estimated_value(a) <= self.best_value,
             Type::Min => self.state.estimated_value(a) >= self.best_value,
@@ -224,7 +214,7 @@ impl<P, S, A> Algorithm<P, S, A>
                 .alternatives()
                 .into_iter()
                 .filter(|a| !self.is_to_prune(a.clone()))
-                .collect::<Vec<A>>();
+                .collect::<Vec<S::Alternative>>();
 
             for alternative in alternatives {
                 self.state.forward(alternative.clone());

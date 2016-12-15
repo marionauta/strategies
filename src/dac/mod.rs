@@ -15,7 +15,6 @@
 
 use std::collections::HashMap;
 use std::hash::Hash;
-use std::marker::PhantomData;
 
 /// Divide & Conquer Problem.
 ///
@@ -47,7 +46,10 @@ use std::marker::PhantomData;
 ///     struct Fibonacci(u64);
 ///
 ///     // Since the problem is simple, `E` and `S` are the same type.
-///     impl DacProblem<u64, u64> for Fibonacci {
+///     impl DacProblem for Fibonacci {
+///         type Solution = u64;
+///         type Partial = u64;
+///
 ///         fn size(&self) -> usize {
 ///             self.0 as usize
 ///         }
@@ -107,7 +109,9 @@ use std::marker::PhantomData;
 /// [2]: struct.DacMemAlgorithm.html
 /// [3]: #required-methods
 /// [4]: https://en.wikipedia.org/wiki/Fibonacci_number
-pub trait DacProblem<S, E> {
+pub trait DacProblem {
+    type Solution;
+    type Partial;
     /// The size of your problem. Usually referred to as `n`.
     ///
     /// It should decrease as you split the problem, otherwise the algorithm
@@ -120,7 +124,7 @@ pub trait DacProblem<S, E> {
     fn is_base_case(&self) -> bool;
 
     /// The base case's solution.
-    fn base_case_solution(&self) -> E;
+    fn base_case_solution(&self) -> Self::Partial;
 
     /// The number of subproblems the problem has.
     fn subproblem_count(&self) -> usize;
@@ -133,11 +137,11 @@ pub trait DacProblem<S, E> {
 
     /// How to combine the subproblems' solutions into the current problem's
     /// solution.
-    fn combine(&self, solutions: Vec<E>) -> E;
+    fn combine(&self, solutions: Vec<Self::Partial>) -> Self::Partial;
 
     /// Transforms the partial solution `E`, if it is possible, into a final
     /// solution `S`.
-    fn get_solution(&self, partial_solution: &E) -> Option<S>;
+    fn get_solution(&self, partial_solution: &Self::Partial) -> Option<Self::Solution>;
 }
 
 /// The problem solver.
@@ -151,29 +155,23 @@ pub trait DacProblem<S, E> {
 /// [`DacProblem`][1].
 ///
 /// [1]: trait.DacProblem.html#examples
-pub struct DacAlgorithm<P, S, E>
-    where P: DacProblem<S, E>
-{
-    phan: PhantomData<S>,
-    partial_solution: E,
+pub struct DacAlgorithm<P: DacProblem> {
+    partial_solution: P::Partial,
     problem: P,
 }
 
-impl<P, S, E> DacAlgorithm<P, S, E>
-    where P: DacProblem<S, E>
-{
+impl<P: DacProblem> DacAlgorithm<P> {
     /// Solve the `problem` problem.
     pub fn new(problem: P) -> Self {
         let e = Self::solve(&problem);
 
         DacAlgorithm {
-            phan: PhantomData,
             partial_solution: e,
             problem: problem,
         }
     }
 
-    fn solve(problem: &P) -> E {
+    fn solve(problem: &P) -> P::Partial {
         if problem.is_base_case() {
             problem.base_case_solution()
 
@@ -181,14 +179,14 @@ impl<P, S, E> DacAlgorithm<P, S, E>
             let solutions = (0..problem.subproblem_count())
                                 .map(|i| problem.get_subproblem(i))
                                 .map(|p| Self::solve(&p))
-                                .collect::<Vec<E>>();
+                                .collect::<Vec<P::Partial>>();
 
             problem.combine(solutions)
         }
     }
 
     /// Get the final solution.
-    pub fn get_solution(&self) -> Option<S> {
+    pub fn get_solution(&self) -> Option<P::Solution> {
         self.problem.get_solution(&self.partial_solution)
     }
 }
@@ -228,31 +226,29 @@ impl<P, S, E> DacAlgorithm<P, S, E>
 ///
 /// [1]: https://en.wikipedia.org/wiki/Fibonacci_number
 /// [2]: struct.DacAlgorithm.html#usage
-pub struct DacMemAlgorithm<P, S, E>
-    where P: DacProblem<S, E> + Eq + Hash + Clone,
-          E: Clone
+pub struct DacMemAlgorithm<P>
+    where P: DacProblem + Eq + Hash + Clone,
+          P::Partial: Clone
 {
-    phan: PhantomData<S>,
-    solutions: HashMap<P, E>,
+    solutions: HashMap<P, P::Partial>,
     problem: P,
 }
 
-impl<P, S, E> DacMemAlgorithm<P, S, E>
-    where P: DacProblem<S, E> + Eq + Hash + Clone,
-          E: Clone
+impl<P> DacMemAlgorithm<P>
+    where P: DacProblem + Eq + Hash + Clone,
+          P::Partial: Clone
 {
     pub fn new(problem: P) -> Self {
         let mut map = HashMap::new();
         Self::solve(&problem, &mut map);
 
         DacMemAlgorithm {
-            phan: PhantomData,
             solutions: map,
             problem: problem,
         }
     }
 
-    fn solve(problem: &P, mut solutions: &mut HashMap<P, E>) -> E {
+    fn solve(problem: &P, mut solutions: &mut HashMap<P, P::Partial>) -> P::Partial {
         if problem.is_base_case() {
             problem.base_case_solution()
 
@@ -264,7 +260,7 @@ impl<P, S, E> DacMemAlgorithm<P, S, E>
                 let solutions = (0..problem.subproblem_count())
                                     .map(|i| problem.get_subproblem(i))
                                     .map(|p| Self::solve(&p, &mut solutions))
-                                    .collect::<Vec<E>>();
+                                    .collect::<Vec<P::Partial>>();
 
                 problem.combine(solutions)
             };
@@ -274,7 +270,7 @@ impl<P, S, E> DacMemAlgorithm<P, S, E>
         }
     }
 
-    pub fn get_solution(&self) -> Option<S> {
+    pub fn get_solution(&self) -> Option<P::Solution> {
         self.solutions
             .get(&self.problem)
             .and_then(|e| self.problem.get_solution(e))
